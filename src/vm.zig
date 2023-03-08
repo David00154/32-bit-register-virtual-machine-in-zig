@@ -19,37 +19,37 @@ pub const Vm = struct {
     /// Loops as long as instructions can be executed.
     pub fn run(self: *Self) !void {
         defer self.program.deinit();
-        var is_done = false;
-        while (!is_done) {
-            is_done = self.execute_instruction();
-        }
+        // var is_done = false;
+        // while (!is_done) {
+        //     is_done = self.execute_instruction();
+        // }
         // try self.program.append(0);
 
         // std.debug.print("{}\n", .{std.mem.len(self.program.items)});
 
-        // while (true) {
-        //     if (self.pc >= std.mem.len(self.program.items)) {
-        //         break;
-        //     }
-        //     switch (self.decode_opcode()) {
-        //         Opcode.LOAD => {
-        //             var register = @as(usize, self.next_8_bits()); // We cast to usize so we can use it as an index into the array
-        //             var number = @as(u16, self.next_16_bits());
+        while (true) {
+            if (self.pc >= std.mem.len(self.program.items)) {
+                break;
+            }
+            switch (self.decode_opcode()) {
+                Opcode.LOAD => {
+                    var register = @as(usize, self.next_8_bits()); // We cast to usize so we can use it as an index into the array
+                    var number = @as(u16, self.next_16_bits());
 
-        //             self.registers[register] = @as(i32, number); // Our registers are i32s, so we need to cast it. We'll cover that later.
-        //             //continue;  Start another iteration of the loop. The next 8 bits waiting to be read should be an opcode.
-
-        //         },
-        //         Opcode.HLT => {
-        //             log("HLT encountered!\n", .{});
-        //             return;
-        //         },
-        //         else => {
-        //             log("Unrecognized opcode found! Terminating!\n", .{});
-        //             return;
-        //         },
-        //     }
-        // }
+                    self.registers[register] = @as(i32, number); // Our registers are i32s, so we need to cast it. We'll cover that later.
+                    //continue;  Start another iteration of the loop. The next 8 bits waiting to be read should be an opcode.
+                    log("LOAD encountered!\n", .{});
+                },
+                Opcode.HLT => {
+                    log("HLT encountered!\n", .{});
+                    return;
+                },
+                else => {
+                    log("Unrecognized opcode found! Terminating!\n", .{});
+                    return;
+                },
+            }
+        }
     }
 
     fn decode_opcode(self: *Self) Opcode {
@@ -83,7 +83,7 @@ pub const Vm = struct {
 
                 self.registers[register] = @as(i32, number); // Our registers are i32s, so we need to cast it. We'll cover that later.
                 //continue;  Start another iteration of the loop. The next 8 bits waiting to be read should be an opcode.
-
+                log("LOAD encountered!\n", .{});
             },
             Opcode.HLT => {
                 log("HLT encountered!\n", .{});
@@ -104,21 +104,21 @@ test "create vm" {
     try std.testing.expectEqual(@as(i32, 0), test_vm.registers[0]);
 }
 
-// test "opcode htl" {
-//     var test_vm = Vm.new(std.testing.allocator);
-//     const program = [_]u8{ 5, 5, 5, 5 };
-//     try test_vm.program.appendSlice(program[0..]);
-//     try test_vm.run_once();
-//     try std.testing.expectEqual(test_vm.pc, 1);
-// }
+test "opcode htl" {
+    var test_vm = Vm.new(std.testing.allocator);
+    const program = [_]u8{ 5, 0, 0, 0 };
+    try test_vm.program.appendSlice(program[0..]);
+    try test_vm.run();
+    try std.testing.expectEqual(test_vm.pc, 1);
+}
 
-// test "opcode idl" {
-//     var test_vm = Vm.new(std.testing.allocator);
-//     const program = [_]u8{ 200, 0, 0, 0 };
-//     try test_vm.program.appendSlice(program[0..]);
-//     try test_vm.run_once();
-//     try std.testing.expectEqual(test_vm.pc, 1);
-// }
+test "opcode idl" {
+    var test_vm = Vm.new(std.testing.allocator);
+    const program = [_]u8{ 200, 0, 0, 0 };
+    try test_vm.program.appendSlice(program[0..]);
+    try test_vm.run();
+    try std.testing.expectEqual(test_vm.pc, 1);
+}
 
 test "opcode load" {
     var test_vm = Vm.new(std.testing.allocator);
