@@ -13,13 +13,13 @@ pub const Opcode = enum(u8) {
     JMP,
     JMPF,
     JMPB,
-    // EQ,
-    // NEQ,
-    // GTE,
-    // LTE,
-    // LT,
-    // GT,
-    // JMPE,
+    EQ, // ==
+    NEQ, // !=
+    GTE, // >=
+    LTE, // <=
+    LT, // <
+    GT, // >
+    JMPE,
     // NOP,
     // ALOC,
     // INC,
@@ -65,6 +65,13 @@ pub const Opcode = enum(u8) {
             6 => Opcode.JMP,
             7 => Opcode.JMPF,
             8 => Opcode.JMPB,
+            9 => Opcode.EQ,
+            10 => Opcode.NEQ,
+            11 => Opcode.GTE,
+            12 => Opcode.LTE,
+            13 => Opcode.LT,
+            14 => Opcode.GT,
+            15 => Opcode.JMPE,
             else => Opcode.IGL,
         };
     }

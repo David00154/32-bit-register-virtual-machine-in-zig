@@ -8,12 +8,15 @@ pub const Vm = struct {
     registers: [32]i32,
     pc: usize,
     program: std.ArrayList(u8),
-    remainder: ?u32 = 0,
+    remainder: u32,
+    equal_tag: bool,
     pub fn new(allocator: std.mem.Allocator) Vm {
         return Vm{
             .registers = @splat(32, @as(i32, 0)),
             .pc = 0,
             .program = std.ArrayList(u8).init(allocator),
+            .remainder = 0,
+            .equal_tag = false,
         };
     }
     /// Loops as long as instructions can be executed.
@@ -108,6 +111,56 @@ pub const Vm = struct {
                 self.pc -= @intCast(usize, target);
                 print("JMPB encountered!\n", .{});
             },
+            Opcode.EQ => {
+                const register1 = self.registers[@intCast(usize, self.next_8_bits())];
+                const register2 = self.registers[@intCast(usize, self.next_8_bits())];
+                self.equal_tag = register1 == register2;
+                _ = self.next_8_bits();
+                print("EQ encountered!\n", .{});
+            },
+            Opcode.NEQ => {
+                const register1 = self.registers[@intCast(usize, self.next_8_bits())];
+                const register2 = self.registers[@intCast(usize, self.next_8_bits())];
+                self.equal_tag = register1 != register2;
+                _ = self.next_8_bits();
+                print("NEQ encountered!\n", .{});
+            },
+            Opcode.GTE => {
+                const register1 = self.registers[@intCast(usize, self.next_8_bits())];
+                const register2 = self.registers[@intCast(usize, self.next_8_bits())];
+                self.equal_tag = register1 >= register2;
+                _ = self.next_8_bits();
+                print("GTE encountered!\n", .{});
+            },
+            Opcode.LTE => {
+                const register1 = self.registers[@intCast(usize, self.next_8_bits())];
+                const register2 = self.registers[@intCast(usize, self.next_8_bits())];
+                self.equal_tag = register1 <= register2;
+                _ = self.next_8_bits();
+                print("LTE encountered!\n", .{});
+            },
+            Opcode.LT => {
+                const register1 = self.registers[@intCast(usize, self.next_8_bits())];
+                const register2 = self.registers[@intCast(usize, self.next_8_bits())];
+                self.equal_tag = register1 < register2;
+                _ = self.next_8_bits();
+                print("LT encountered!\n", .{});
+            },
+            Opcode.GT => {
+                const register1 = self.registers[@intCast(usize, self.next_8_bits())];
+                const register2 = self.registers[@intCast(usize, self.next_8_bits())];
+                self.equal_tag = register1 > register2;
+                _ = self.next_8_bits();
+                print("GT encountered!\n", .{});
+            },
+            Opcode.JMPE => {
+                const register = @intCast(usize, self.next_8_bits());
+                const target = self.registers[register];
+                if (self.equal_tag) {
+                    self.pc = @intCast(usize, target);
+                }
+                print("JMPE encountered!\n", .{});
+            },
             Opcode.IGL => {
                 print("Unrecognized opcode found! Terminating!\n", .{});
                 return false;
@@ -116,6 +169,8 @@ pub const Vm = struct {
         return true;
     }
 };
+
+// TESTS
 
 test "create vm" {
     var test_vm: Vm = Vm.new(std.testing.allocator);
@@ -238,5 +293,141 @@ test "opcode jmpb" {
     test_vm.run_once(); // 4
     test_vm.run_once(); // 8
     test_vm.run_once(); // 8
+    try std.testing.expectEqual(test_vm.pc, 8);
+}
+
+test "opcode eq" {
+    var test_vm = Vm.new(std.testing.allocator);
+    defer test_vm.program.deinit();
+    var program = [_]u8{
+        0, 0, 0, 10,
+        0, 1, 0, 10,
+        9, 0, 1, 0,
+    };
+    try test_vm.program.appendSlice(program[0..]);
+    test_vm.run_once();
+    test_vm.run_once();
+    test_vm.run_once();
+    try std.testing.expectEqual(test_vm.equal_tag, true);
+    var program2 = [_]u8{
+        0, 0, 0, 20, //
+        9, 0, 1, 0,
+    };
+    try test_vm.program.appendSlice(program2[0..]);
+    test_vm.run_once();
+    test_vm.run_once();
+    try std.testing.expectEqual(test_vm.equal_tag, false);
+}
+
+test "opcode neq" {
+    var test_vm = Vm.new(std.testing.allocator);
+    defer test_vm.program.deinit();
+    var program = [_]u8{
+        0,  0, 0, 1, //
+        0,  1, 0, 2,
+        10, 0, 1, 0,
+    };
+    try test_vm.program.appendSlice(program[0..]);
+    test_vm.run_once();
+    test_vm.run_once();
+    test_vm.run_once();
+    try std.testing.expectEqual(test_vm.equal_tag, true);
+    var program2 = [_]u8{
+        0,  0, 0, 2, //
+        10, 0, 1, 0,
+    };
+    try test_vm.program.appendSlice(program2[0..]);
+    test_vm.run_once();
+    test_vm.run_once();
+    try std.testing.expectEqual(test_vm.equal_tag, false);
+}
+
+test "opcode gte" {
+    var test_vm = Vm.new(std.testing.allocator);
+    defer test_vm.program.deinit();
+    var program = [_]u8{
+        0,  0, 0, 10, //
+        0,  1, 0, 2,
+        11, 0, 1, 0,
+    };
+    try test_vm.program.appendSlice(program[0..]);
+    test_vm.run_once();
+    test_vm.run_once();
+    test_vm.run_once();
+    try std.testing.expectEqual(test_vm.equal_tag, true);
+    var program2 = [_]u8{
+        0,  0, 0, 2, //
+        11, 0, 1, 0,
+    };
+    try test_vm.program.appendSlice(program2[0..]);
+    test_vm.run_once();
+    test_vm.run_once();
+    try std.testing.expectEqual(test_vm.equal_tag, true);
+}
+test "opcode lte" {
+    var test_vm = Vm.new(std.testing.allocator);
+    defer test_vm.program.deinit();
+    var program = [_]u8{
+        0,  0, 0, 5, //
+        0,  1, 0, 3,
+        12, 1, 0, 0,
+    };
+    try test_vm.program.appendSlice(program[0..]);
+    test_vm.run_once();
+    test_vm.run_once();
+    test_vm.run_once();
+    try std.testing.expectEqual(test_vm.equal_tag, true);
+    var program2 = [_]u8{
+        0,  0, 0, 2, //
+        12, 1, 0, 0,
+    };
+    try test_vm.program.appendSlice(program2[0..]);
+    test_vm.run_once();
+    test_vm.run_once();
+    try std.testing.expectEqual(test_vm.equal_tag, false);
+}
+test "opcode lt" {
+    var test_vm = Vm.new(std.testing.allocator);
+    defer test_vm.program.deinit();
+    var program = [_]u8{
+        0,  0, 0, 4, //
+        0,  1, 0, 12,
+        13, 0, 1, 0,
+    };
+    try test_vm.program.appendSlice(program[0..]);
+    test_vm.run_once();
+    test_vm.run_once();
+    test_vm.run_once();
+    try std.testing.expectEqual(test_vm.equal_tag, true);
+}
+test "opcode gt" {
+    var test_vm = Vm.new(std.testing.allocator);
+    defer test_vm.program.deinit();
+    var program = [_]u8{
+        0,  0, 0, 8, //
+        0,  1, 0, 6,
+        14, 0, 1, 0,
+    };
+    try test_vm.program.appendSlice(program[0..]);
+    test_vm.run_once();
+    test_vm.run_once();
+    test_vm.run_once();
+    try std.testing.expectEqual(test_vm.equal_tag, true);
+}
+
+test "opcode jmpe" {
+    var test_vm = Vm.new(std.testing.allocator);
+    defer test_vm.program.deinit();
+    var program = [_]u8{
+        0,  0, 0, 8, //
+        0,  1, 0, 8,
+        9,  0, 1, 0,
+        15, 1, 0, 0,
+    };
+    try test_vm.program.appendSlice(program[0..]);
+    test_vm.run_once();
+    test_vm.run_once();
+    test_vm.run_once();
+    test_vm.run_once();
     try std.testing.expectEqual(test_vm.pc, 8);
 }
