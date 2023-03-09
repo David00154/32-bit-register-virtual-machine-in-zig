@@ -126,7 +126,9 @@ test "create vm" {
 test "opcode hlt" {
     var test_vm = Vm.new(std.testing.allocator);
     defer test_vm.program.deinit();
-    const program = [_]u8{ 5, 0, 0, 0 };
+    const program = [_]u8{
+        5, 0, 0, 0, //
+    };
     try test_vm.program.appendSlice(program[0..]);
     test_vm.run_once();
     try std.testing.expectEqual(test_vm.pc, 1);
@@ -135,7 +137,9 @@ test "opcode hlt" {
 test "opcode igl" {
     var test_vm = Vm.new(std.testing.allocator);
     defer test_vm.program.deinit();
-    const program = [_]u8{ 200, 0, 0, 0 };
+    const program = [_]u8{
+        200, 0, 0, 0, //
+    };
     try test_vm.program.appendSlice(program[0..]);
     test_vm.run_once();
     try std.testing.expectEqual(test_vm.pc, 1);
@@ -143,7 +147,9 @@ test "opcode igl" {
 
 test "opcode load" {
     var test_vm = Vm.new(std.testing.allocator);
-    const program = [_]u8{ 0, 0, 1, 44 }; // load register <- [number in split 16bit]
+    const program = [_]u8{
+        0, 0, 1, 44, //
+    }; // load register <- [number in split 16bit]
     try test_vm.program.appendSlice(program[0..]);
     try test_vm.run();
     try std.testing.expectEqual(test_vm.registers[0], 300);
@@ -153,7 +159,9 @@ test "opcode add" {
     var test_vm = Vm.new(std.testing.allocator);
     test_vm.registers[0] = 4;
     test_vm.registers[1] = 4;
-    var program = [_]u8{ 1, 0, 1, 2 };
+    var program = [_]u8{
+        1, 0, 1, 2, //
+    };
     try test_vm.program.appendSlice(program[0..]);
     try test_vm.run();
     try std.testing.expectEqual(test_vm.registers[2], 8);
@@ -162,7 +170,9 @@ test "opcode sub" {
     var test_vm = Vm.new(std.testing.allocator);
     test_vm.registers[0] = 4;
     test_vm.registers[1] = 2;
-    var program = [_]u8{ 2, 0, 1, 2 };
+    var program = [_]u8{
+        2, 0, 1, 2, //
+    };
     try test_vm.program.appendSlice(program[0..]);
     try test_vm.run();
     try std.testing.expectEqual(test_vm.registers[2], 2);
@@ -171,7 +181,9 @@ test "opcode mul" {
     var test_vm = Vm.new(std.testing.allocator);
     test_vm.registers[0] = 4;
     test_vm.registers[1] = 2;
-    var program = [_]u8{ 3, 0, 1, 2 };
+    var program = [_]u8{
+        3, 0, 1, 2, //
+    };
     try test_vm.program.appendSlice(program[0..]);
     try test_vm.run();
     try std.testing.expectEqual(test_vm.registers[2], 8);
@@ -180,7 +192,9 @@ test "opcode div" {
     var test_vm = Vm.new(std.testing.allocator);
     test_vm.registers[0] = 20;
     test_vm.registers[1] = 7;
-    var program = [_]u8{ 4, 0, 1, 2 };
+    var program = [_]u8{
+        4, 0, 1, 2, //
+    };
     try test_vm.program.appendSlice(program[0..]);
     try test_vm.run();
     try std.testing.expectEqual(test_vm.registers[2], 2);
@@ -190,7 +204,9 @@ test "opcode jmp" {
     var test_vm = Vm.new(std.testing.allocator);
     defer test_vm.program.deinit();
     test_vm.registers[0] = 1;
-    var program = [_]u8{ 6, 0, 0, 0 };
+    var program = [_]u8{
+        6, 0, 0, 0, //
+    };
     try test_vm.program.appendSlice(program[0..]);
     test_vm.run_once();
     try std.testing.expectEqual(test_vm.pc, 1);
@@ -201,8 +217,26 @@ test "opcode jmpf" {
     test_vm.registers[0] = 2;
     test_vm.registers[1] = 2;
     test_vm.registers[2] = 4;
-    var program = [_]u8{ 7, 0, 0, 0, 1, 1, 2, 20 };
+    var program = [_]u8{
+        7, 0, 0, 0, //
+        1, 1, 2, 20,
+    };
     try test_vm.program.appendSlice(program[0..]);
     test_vm.run_once();
     try std.testing.expectEqual(test_vm.pc, 4);
+}
+
+test "opcode jmpb" {
+    var test_vm = Vm.new(std.testing.allocator);
+    defer test_vm.program.deinit();
+    var program = [_]u8{
+        0, 0, 0, 6, //
+        0, 0, 0, 2,
+        8, 0, 0, 0,
+    };
+    try test_vm.program.appendSlice(program[0..]);
+    test_vm.run_once(); // 4
+    test_vm.run_once(); // 8
+    test_vm.run_once(); // 8
+    try std.testing.expectEqual(test_vm.pc, 8);
 }
