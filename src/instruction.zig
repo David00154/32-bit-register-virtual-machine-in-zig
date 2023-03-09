@@ -4,15 +4,15 @@ const Vm = @import("./vm.zig");
 
 pub const Opcode = enum(u8) {
     //
-    LOAD,
+    LOAD = 0,
     ADD,
     SUB,
     MUL,
     DIV,
     HLT,
-    // JMP,
-    // JMPF,
-    // JMPB,
+    JMP,
+    JMPF,
+    JMPB,
     // EQ,
     // NEQ,
     // GTE,
@@ -54,17 +54,17 @@ pub const Opcode = enum(u8) {
     // CALL,
     // RET,
     //
-
-    pub fn fromU8(v: u8) Opcode {
-        return switch (v) {
-            // 0 => Opcode.HLT,
+    pub fn intToEnum(value: u8) Opcode {
+        return switch (value) {
             0 => Opcode.LOAD,
             1 => Opcode.ADD,
             2 => Opcode.SUB,
             3 => Opcode.MUL,
             4 => Opcode.DIV,
             5 => Opcode.HLT,
-
+            6 => Opcode.JMP,
+            7 => Opcode.JMPF,
+            8 => Opcode.JMPB,
             else => Opcode.IGL,
         };
     }

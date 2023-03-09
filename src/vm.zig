@@ -1,14 +1,14 @@
 const std = @import("std");
 const meta = std.meta;
 const Opcode = @import("./instruction.zig").Opcode;
-const log = std.debug.print;
+const print = std.debug.print;
 // const Vector = meta.Vector;
-
 pub const Vm = struct {
     const Self = @This();
     registers: [32]i32,
     pc: usize,
     program: std.ArrayList(u8),
+    remainder: ?u32 = 0,
     pub fn new(allocator: std.mem.Allocator) Vm {
         return Vm{
             .registers = @splat(32, @as(i32, 0)),
@@ -30,7 +30,9 @@ pub const Vm = struct {
     }
 
     fn decode_opcode(self: *Self) Opcode {
-        var opcode = Opcode.fromU8(self.program.items[self.pc]);
+        // var opcode = @intToEnum(Opcode, self.program.items[self.pc]);
+        var opcode = Opcode.intToEnum(self.program.items[self.pc]);
+
         self.pc += 1;
         return opcode;
     }
@@ -60,14 +62,54 @@ pub const Vm = struct {
 
                 self.registers[register] = @as(i32, number); // Our registers are i32s, so we need to cast it. We'll cover that later.
                 //continue;  Start another iteration of the loop. The next 8 bits waiting to be read should be an opcode.
-                log("LOAD encountered!\n", .{});
+                print("LOAD encountered!\n", .{});
+            },
+            Opcode.ADD => {
+                var register1 = self.registers[@as(usize, self.next_8_bits())];
+                var register2 = self.registers[@as(usize, self.next_8_bits())];
+                self.registers[@as(usize, self.next_8_bits())] = register1 + register2;
+                print("ADD encountered!\n", .{});
+            },
+            Opcode.SUB => {
+                var register1 = self.registers[@as(usize, self.next_8_bits())];
+                var register2 = self.registers[@as(usize, self.next_8_bits())];
+                self.registers[@as(usize, self.next_8_bits())] = register1 - register2;
+                print("SUB encountered!\n", .{});
+            },
+            Opcode.MUL => {
+                var register1 = self.registers[@as(usize, self.next_8_bits())];
+                var register2 = self.registers[@as(usize, self.next_8_bits())];
+                self.registers[@as(usize, self.next_8_bits())] = register1 * register2;
+                print("MUL encountered!\n", .{});
+            },
+            Opcode.DIV => {
+                var register1 = self.registers[@intCast(usize, self.next_8_bits())];
+                var register2 = self.registers[@intCast(usize, self.next_8_bits())];
+                self.registers[@intCast(usize, self.next_8_bits())] = @divFloor(register1, register2);
+                self.remainder = @intCast(u32, @mod(register1, register2));
+                print("DIV encountered!\n", .{});
             },
             Opcode.HLT => {
-                log("HLT encountered!\n", .{});
+                print("HLT encountered!\n", .{});
                 return false;
             },
-            else => {
-                log("Unrecognized opcode found! Terminating!\n", .{});
+            Opcode.JMP => {
+                const target = self.registers[@intCast(usize, self.next_8_bits())];
+                self.pc = @intCast(usize, target);
+                print("JMP encountered!\n", .{});
+            },
+            Opcode.JMPF => {
+                const target = self.registers[@intCast(usize, self.next_8_bits())];
+                self.pc += @intCast(usize, target);
+                print("JMPF encountered!\n", .{});
+            },
+            Opcode.JMPB => {
+                const target = self.registers[@intCast(usize, self.next_8_bits())];
+                self.pc -= @intCast(usize, target);
+                print("JMPB encountered!\n", .{});
+            },
+            Opcode.IGL => {
+                print("Unrecognized opcode found! Terminating!\n", .{});
                 return false;
             },
         }
@@ -105,4 +147,62 @@ test "opcode load" {
     try test_vm.program.appendSlice(program[0..]);
     try test_vm.run();
     try std.testing.expectEqual(test_vm.registers[0], 300);
+}
+
+test "opcode add" {
+    var test_vm = Vm.new(std.testing.allocator);
+    test_vm.registers[0] = 4;
+    test_vm.registers[1] = 4;
+    var program = [_]u8{ 1, 0, 1, 2 };
+    try test_vm.program.appendSlice(program[0..]);
+    try test_vm.run();
+    try std.testing.expectEqual(test_vm.registers[2], 8);
+}
+test "opcode sub" {
+    var test_vm = Vm.new(std.testing.allocator);
+    test_vm.registers[0] = 4;
+    test_vm.registers[1] = 2;
+    var program = [_]u8{ 2, 0, 1, 2 };
+    try test_vm.program.appendSlice(program[0..]);
+    try test_vm.run();
+    try std.testing.expectEqual(test_vm.registers[2], 2);
+}
+test "opcode mul" {
+    var test_vm = Vm.new(std.testing.allocator);
+    test_vm.registers[0] = 4;
+    test_vm.registers[1] = 2;
+    var program = [_]u8{ 3, 0, 1, 2 };
+    try test_vm.program.appendSlice(program[0..]);
+    try test_vm.run();
+    try std.testing.expectEqual(test_vm.registers[2], 8);
+}
+test "opcode div" {
+    var test_vm = Vm.new(std.testing.allocator);
+    test_vm.registers[0] = 20;
+    test_vm.registers[1] = 7;
+    var program = [_]u8{ 4, 0, 1, 2 };
+    try test_vm.program.appendSlice(program[0..]);
+    try test_vm.run();
+    try std.testing.expectEqual(test_vm.registers[2], 2);
+}
+
+test "opcode jmp" {
+    var test_vm = Vm.new(std.testing.allocator);
+    defer test_vm.program.deinit();
+    test_vm.registers[0] = 1;
+    var program = [_]u8{ 6, 0, 0, 0 };
+    try test_vm.program.appendSlice(program[0..]);
+    test_vm.run_once();
+    try std.testing.expectEqual(test_vm.pc, 1);
+}
+test "opcode jmpf" {
+    var test_vm = Vm.new(std.testing.allocator);
+    defer test_vm.program.deinit();
+    test_vm.registers[0] = 2;
+    test_vm.registers[1] = 2;
+    test_vm.registers[2] = 4;
+    var program = [_]u8{ 7, 0, 0, 0, 1, 1, 2, 20 };
+    try test_vm.program.appendSlice(program[0..]);
+    test_vm.run_once();
+    try std.testing.expectEqual(test_vm.pc, 4);
 }
